@@ -1,11 +1,10 @@
-import sys
-import selectors
-import json
 import io
+import json
+import selectors
 import struct
+import sys
 
 import lnd_grpc
-
 
 request_search = {
     "morpheus": "Follow the white rabbit. \U0001f430",
@@ -13,7 +12,32 @@ request_search = {
     "\U0001f436": "\U0001f43e Playing ball! \U0001f3d0",
 }
 
-CLIENT = lnd_grpc.Client(lnd_dir='/Users/will/regtest/.lnd/', network='regtest', grpc_host='127.0.0.1', grpc_port='10009', macaroon_path='/Users/will/regtest/.lnd/data/chain/bitcoin/regtest/admin.macaroon')
+
+class LndClient():
+
+    def __init__(self):
+        self.config = {}
+        self.read_config()
+        self.client = lnd_grpc.Client(lnd_dir=self.config['lnd_dir'],
+                                      network=self.config['network'],
+                                      grpc_host=self.config['grpc_host'],
+                                      grpc_port=self.config['grpc_port'],
+                                      macaroon_path=self.config['macaroon_path'])
+
+    def read_config(self):
+        with open("boltstore.conf", "r") as conf:
+            data = conf.readlines()
+            for line in data:
+                if line.startswith("#"):
+                    pass
+                else:
+                    key, value = line.split("=")
+                    key = key.strip()
+                    value = value.strip()
+                    self.config[key] = value
+
+
+LND = LndClient()
 
 
 class Message:
@@ -73,14 +97,14 @@ class Message:
 
     def _json_decode(self, json_bytes, encoding):
         tiow = io.TextIOWrapper(
-            io.BytesIO(json_bytes), encoding=encoding, newline=""
+                io.BytesIO(json_bytes), encoding=encoding, newline=""
         )
         obj = json.load(tiow)
         tiow.close()
         return obj
 
     def _create_message(
-        self, *, content_bytes, content_type, content_encoding
+            self, *, content_bytes, content_type, content_encoding
     ):
         jsonheader = {
             "byteorder": sys.byteorder,
@@ -101,7 +125,7 @@ class Message:
             content = {"result": answer}
         if action == "invoice":
             value = int(self.request.get("value"))
-            invoice = CLIENT.to_json(CLIENT.add_invoice(value=value))
+            invoice = LND.client.to_json(LND.client.add_invoice(value=value))
             content = {"result": invoice}
         else:
             content = {"result": f'Error: invalid action "{action}".'}
@@ -116,7 +140,7 @@ class Message:
     def _create_response_binary_content(self):
         response = {
             "content_bytes": b"First 10 bytes of request: "
-            + self.request[:10],
+                             + self.request[:10],
             "content_type": "binary/custom-server-binary-type",
             "content_encoding": "binary",
         }
@@ -155,16 +179,16 @@ class Message:
             self.selector.unregister(self.sock)
         except Exception as e:
             print(
-                f"error: selector.unregister() exception for",
-                f"{self.addr}: {repr(e)}",
+                    f"error: selector.unregister() exception for",
+                    f"{self.addr}: {repr(e)}",
             )
 
         try:
             self.sock.close()
         except OSError as e:
             print(
-                f"error: socket.close() exception for",
-                f"{self.addr}: {repr(e)}",
+                    f"error: socket.close() exception for",
+                    f"{self.addr}: {repr(e)}",
             )
         finally:
             # Delete reference to socket object for garbage collection
@@ -174,7 +198,7 @@ class Message:
         hdrlen = 2
         if len(self._recv_buffer) >= hdrlen:
             self._jsonheader_len = struct.unpack(
-                ">H", self._recv_buffer[:hdrlen]
+                    ">H", self._recv_buffer[:hdrlen]
             )[0]
             self._recv_buffer = self._recv_buffer[hdrlen:]
 
@@ -182,14 +206,14 @@ class Message:
         hdrlen = self._jsonheader_len
         if len(self._recv_buffer) >= hdrlen:
             self.jsonheader = self._json_decode(
-                self._recv_buffer[:hdrlen], "utf-8"
+                    self._recv_buffer[:hdrlen], "utf-8"
             )
             self._recv_buffer = self._recv_buffer[hdrlen:]
             for reqhdr in (
-                "byteorder",
-                "content-length",
-                "content-type",
-                "content-encoding",
+                    "byteorder",
+                    "content-length",
+                    "content-type",
+                    "content-encoding",
             ):
                 if reqhdr not in self.jsonheader:
                     raise ValueError(f'Missing required header "{reqhdr}".')
@@ -208,8 +232,8 @@ class Message:
             # Binary or unknown content-type
             self.request = data
             print(
-                f'received {self.jsonheader["content-type"]} request from',
-                self.addr,
+                    f'received {self.jsonheader["content-type"]} request from',
+                    self.addr,
             )
         # Set selector to listen for write events, we're done reading.
         self._set_selector_events_mask("w")
