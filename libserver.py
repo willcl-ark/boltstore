@@ -94,6 +94,8 @@ class Message:
             query = self.request.get("value")
             answer = request_search.get(query) or f'No match for "{query}".'
             content = {"result": answer}
+        if action == "invoice":
+            content = {"result": 'requesting invoice'}
         else:
             content = {"result": f'Error: invalid action "{action}".'}
         content_encoding = "utf-8"

@@ -15,6 +15,12 @@ def create_request(action, value):
                 encoding="utf-8",
                 content=dict(action=action, value=value),
         )
+    if action == "invoice":
+        return dict(
+                type="text/json",
+                encoding="utf-8",
+                content=dict(action=action, value=value),
+        )
     else:
         return dict(
                 type="binary/custom-client-binary-type",
