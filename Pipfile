@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+lnd-grpc = {editable = true,path = "/Users/will/Documents/src/lnd_grpc"}
 
 [requires]
 python_version = "3.7"

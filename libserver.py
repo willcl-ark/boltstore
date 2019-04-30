@@ -4,11 +4,16 @@ import json
 import io
 import struct
 
+import lnd_grpc
+
+
 request_search = {
     "morpheus": "Follow the white rabbit. \U0001f430",
     "ring": "In the caves beneath the Misty Mountains. \U0001f48d",
     "\U0001f436": "\U0001f43e Playing ball! \U0001f3d0",
 }
+
+CLIENT = lnd_grpc.Client(lnd_dir='/Users/will/regtest/.lnd/', network='regtest', grpc_host='127.0.0.1', grpc_port='10009', macaroon_path='/Users/will/regtest/.lnd/data/chain/bitcoin/regtest/admin.macaroon')
 
 
 class Message:
@@ -95,7 +100,9 @@ class Message:
             answer = request_search.get(query) or f'No match for "{query}".'
             content = {"result": answer}
         if action == "invoice":
-            content = {"result": 'requesting invoice'}
+            value = int(self.request.get("value"))
+            invoice = CLIENT.to_json(CLIENT.add_invoice(value=value))
+            content = {"result": invoice}
         else:
             content = {"result": f'Error: invalid action "{action}".'}
         content_encoding = "utf-8"
