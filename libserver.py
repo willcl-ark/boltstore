@@ -4,7 +4,7 @@ import selectors
 import struct
 import sys
 
-from lnd_client import LND
+from lnd_client import LND_SERVER
 
 
 class Message:
@@ -18,6 +18,7 @@ class Message:
         self.jsonheader = None
         self.request = None
         self.response_created = False
+        # self.invoice_r_hash = None
 
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
@@ -88,8 +89,9 @@ class Message:
         action = self.request.get("action")
         if action == "invoice":
             value = int(self.request.get("value"))
-            invoice = LND.rpc.message_to_json(LND.rpc.add_invoice(value=value))
-            content = {"result": invoice}
+            invoice = LND_SERVER.rpc.message_to_json(
+                    LND_SERVER.rpc.add_invoice(value=value))
+            content = {"result": (action, invoice)}
         else:
             content = {"result": f'Error: invalid action "{action}".'}
         content_encoding = "utf-8"
