@@ -4,9 +4,8 @@
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
 
 # User-specific stuff
-.idea/**/workspace.xml
+.idea/
 .idea/**/tasks.xml
-.idea/**/dictionaries
 .idea/**/shelf
 
 # Sensitive or high-churn files
@@ -195,6 +194,4 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-.idea/boltstore.iml
-.idea/misc.xml
-.idea/modules.xml
+
