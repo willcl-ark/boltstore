@@ -4,40 +4,7 @@ import selectors
 import struct
 import sys
 
-import lnd_grpc
-
-request_search = {
-    "morpheus": "Follow the white rabbit. \U0001f430",
-    "ring": "In the caves beneath the Misty Mountains. \U0001f48d",
-    "\U0001f436": "\U0001f43e Playing ball! \U0001f3d0",
-}
-
-
-class LndClient():
-
-    def __init__(self):
-        self.config = {}
-        self.read_config()
-        self.client = lnd_grpc.Client(lnd_dir=self.config['lnd_dir'],
-                                      network=self.config['network'],
-                                      grpc_host=self.config['grpc_host'],
-                                      grpc_port=self.config['grpc_port'],
-                                      macaroon_path=self.config['macaroon_path'])
-
-    def read_config(self):
-        with open("boltstore.conf", "r") as conf:
-            data = conf.readlines()
-            for line in data:
-                if line.startswith("#"):
-                    pass
-                else:
-                    key, value = line.split("=")
-                    key = key.strip()
-                    value = value.strip()
-                    self.config[key] = value
-
-
-LND = LndClient()
+from lnd_client import LND
 
 
 class Message:
@@ -119,13 +86,9 @@ class Message:
 
     def _create_response_json_content(self):
         action = self.request.get("action")
-        if action == "search":
-            query = self.request.get("value")
-            answer = request_search.get(query) or f'No match for "{query}".'
-            content = {"result": answer}
         if action == "invoice":
             value = int(self.request.get("value"))
-            invoice = LND.client.to_json(LND.client.add_invoice(value=value))
+            invoice = LND.rpc.message_to_json(LND.rpc.add_invoice(value=value))
             content = {"result": invoice}
         else:
             content = {"result": f'Error: invalid action "{action}".'}
