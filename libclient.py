@@ -4,6 +4,8 @@ import json
 import io
 import struct
 
+from lnd_client import LND_CLIENT
+
 
 class Message:
     def __init__(self, selector, sock, addr, request):
@@ -17,6 +19,10 @@ class Message:
         self._jsonheader_len = None
         self.jsonheader = None
         self.response = None
+        self.invoice_value = None
+        self.invoice_r_hash = None
+        self.payment_request = None
+        self.add_index = None
 
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
@@ -83,11 +89,30 @@ class Message:
     def _process_response_json_content(self):
         content = self.response
         result = content.get("result")
-        print(f"got result: {result}")
+        if result[0] == 'invoice':
+            self.process_invoice(result)
+        else:
+            print(f"got result: {result}")
 
     def _process_response_binary_content(self):
         content = self.response
         print(f"got response: {repr(content)}")
+
+    def process_invoice(self, invoice):
+        result_json = json.loads(invoice[1])
+        self.invoice_r_hash = result_json['r_hash'].rstrip()
+        self.payment_request = result_json['payment_request'].rstrip()
+        self.add_index = result_json['add_index'].rstrip()
+        decoded = LND_CLIENT.rpc.decode_pay_req(pay_req=self.payment_request)
+
+        print(f"\nr_hash: {self.invoice_r_hash}")
+        print(f"payment request: {self.payment_request}")
+        print(f"add_index: {self.add_index}")
+        print(f"\ndecoded payment request: {decoded}")
+        print(f"value requested: {self.invoice_value}")
+        print(f"Requested value matches decoded invoice value: "
+              f"{self.invoice_value == decoded.num_satoshis}")
+
 
     def process_events(self, mask):
         if mask & selectors.EVENT_READ:
@@ -143,6 +168,8 @@ class Message:
 
     def queue_request(self):
         content = self.request["content"]
+        if content['action'] == 'invoice':
+            self.invoice_value = int(content['value'])
         content_type = self.request["type"]
         content_encoding = self.request["encoding"]
         if content_type == "text/json":
