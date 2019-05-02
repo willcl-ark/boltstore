@@ -1,10 +1,11 @@
-import sys
-import selectors
-import json
 import io
+import json
+import selectors
 import struct
+import sys
 
 from lnd_client import LND_CLIENT
+from utilities import *
 
 
 class Message:
@@ -23,6 +24,7 @@ class Message:
         self.invoice_r_hash = None
         self.payment_request = None
         self.add_index = None
+        self.invoice_paid = False
 
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
@@ -66,14 +68,14 @@ class Message:
 
     def _json_decode(self, json_bytes, encoding):
         tiow = io.TextIOWrapper(
-            io.BytesIO(json_bytes), encoding=encoding, newline=""
+                io.BytesIO(json_bytes), encoding=encoding, newline=""
         )
         obj = json.load(tiow)
         tiow.close()
         return obj
 
     def _create_message(
-        self, *, content_bytes, content_type, content_encoding
+            self, *, content_bytes, content_type, content_encoding
     ):
         jsonheader = {
             "byteorder": sys.byteorder,
@@ -91,6 +93,8 @@ class Message:
         result = content.get("result")
         if result[0] == 'invoice':
             self.process_invoice(result)
+        # if result[0] == 'verify':
+        #     self.process_verify(result)
         else:
             print(f"got result: {result}")
 
@@ -100,19 +104,27 @@ class Message:
 
     def process_invoice(self, invoice):
         result_json = json.loads(invoice[1])
-        self.invoice_r_hash = result_json['r_hash'].rstrip()
+        self.invoice_r_hash = bytes_to_hex(base64_to_bytes(result_json['r_hash'].rstrip()))
         self.payment_request = result_json['payment_request'].rstrip()
         self.add_index = result_json['add_index'].rstrip()
         decoded = LND_CLIENT.rpc.decode_pay_req(pay_req=self.payment_request)
 
-        print(f"\nr_hash: {self.invoice_r_hash}")
-        print(f"payment request: {self.payment_request}")
-        print(f"add_index: {self.add_index}")
-        print(f"\ndecoded payment request: {decoded}")
+        # print(f"\nr_hash: {self.invoice_r_hash}")
+        # print(f"payment request: {self.payment_request}")
+        # print(f"add_index: {self.add_index}")
+        print(f"\ndecoded payment request: \n{decoded}")
         print(f"value requested: {self.invoice_value}")
         print(f"Requested value matches decoded invoice value: "
               f"{self.invoice_value == decoded.num_satoshis}")
 
+        while self.invoice_paid is False:
+            preimage_base64 = input("Please enter base64 preimage: ")
+            preimage_bytes = base64_to_bytes(preimage_base64)
+            hash_bytes = sha256_to_bytes(preimage_bytes)
+            hash_hex = bytes_to_hex(hash_bytes)
+            if hash_hex == self.invoice_r_hash:
+                self.invoice_paid = True
+                print('\nInvoice paid successfully, releasing item.\n\n')
 
     def process_events(self, mask):
         if mask & selectors.EVENT_READ:
@@ -151,16 +163,16 @@ class Message:
             self.selector.unregister(self.sock)
         except Exception as e:
             print(
-                f"error: selector.unregister() exception for",
-                f"{self.addr}: {repr(e)}",
+                    f"error: selector.unregister() exception for",
+                    f"{self.addr}: {repr(e)}",
             )
 
         try:
             self.sock.close()
         except OSError as e:
             print(
-                f"error: socket.close() exception for",
-                f"{self.addr}: {repr(e)}",
+                    f"error: socket.close() exception for",
+                    f"{self.addr}: {repr(e)}",
             )
         finally:
             # Delete reference to socket object for garbage collection
@@ -192,7 +204,7 @@ class Message:
         hdrlen = 2
         if len(self._recv_buffer) >= hdrlen:
             self._jsonheader_len = struct.unpack(
-                ">H", self._recv_buffer[:hdrlen]
+                    ">H", self._recv_buffer[:hdrlen]
             )[0]
             self._recv_buffer = self._recv_buffer[hdrlen:]
 
@@ -200,14 +212,14 @@ class Message:
         hdrlen = self._jsonheader_len
         if len(self._recv_buffer) >= hdrlen:
             self.jsonheader = self._json_decode(
-                self._recv_buffer[:hdrlen], "utf-8"
+                    self._recv_buffer[:hdrlen], "utf-8"
             )
             self._recv_buffer = self._recv_buffer[hdrlen:]
             for reqhdr in (
-                "byteorder",
-                "content-length",
-                "content-type",
-                "content-encoding",
+                    "byteorder",
+                    "content-length",
+                    "content-type",
+                    "content-encoding",
             ):
                 if reqhdr not in self.jsonheader:
                     raise ValueError(f'Missing required header "{reqhdr}".')
@@ -227,8 +239,8 @@ class Message:
             # Binary or unknown content-type
             self.response = data
             print(
-                f'received {self.jsonheader["content-type"]} response from',
-                self.addr,
+                    f'received {self.jsonheader["content-type"]} response from',
+                    self.addr,
             )
             self._process_response_binary_content()
         # Close when response has been processed
