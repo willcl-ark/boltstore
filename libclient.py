@@ -4,7 +4,6 @@ import selectors
 import struct
 import sys
 
-from lnd_client import LND_CLIENT
 from invoices import Invoice
 from utilities import *
 
