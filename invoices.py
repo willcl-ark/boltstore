@@ -15,7 +15,7 @@ class Invoice:
         return f"{self.decoded_pay_req}Is paid: {self.is_paid}"
 
     def __repr__(self):
-        return self.r_hash_bytes, self.payment_request, self.r_index
+        return f"Invoice({self.r_hash_bytes}, {self.payment_request}, {self.r_index})"
 
     def pay(self, preimage_base64):
         preimage_bytes = base64_to_bytes(preimage_base64)
