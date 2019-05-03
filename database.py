@@ -36,14 +36,43 @@ class Database:
         """
         Create table with a primary column
         """
-        self.cursor.execute(f'CREATE TABLE {table_name} ({column_name} {column_type} PRIMARY KEY)')
+        query = f"""
+        CREATE TABLE {table_name} ({column_name} {column_type} PRIMARY KEY)
+        """
+        self.cursor.execute(query)
         self.conn.commit()
 
     def add_column(self, table_name, column_name, column_type):
-        self.cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN '{column_name}' {column_type}")
+
+        query = f"""
+        ALTER TABLE {table_name}
+        ADD COLUMN '{column_name}' {column_type}
+        """
+
+        self.cursor.execute(query)
         self.conn.commit()
 
     def insert_row(self, table_name, *args):
         # if you add more columns, add more question marks after VALUES
-        self.conn.execute(f"INSERT OR IGNORE INTO {table_name} VALUES (?, ?, ?, ?)", tuple(args))
+
+        query = f"""
+        INSERT OR IGNORE INTO {table_name}
+        VALUES (?, ?, ?, ?)
+        """
+
+        self.cursor.execute(query, tuple(args))
+        self.conn.commit()
+
+    def update_row(self, table_name, id_col, id, column, new_val):
+
+        query = f"""
+        UPDATE
+            {table_name}
+        SET
+            {column} = ?
+        WHERE
+            {id_col} = ?
+        """
+
+        self.cursor.execute(query, (new_val, id))
         self.conn.commit()
