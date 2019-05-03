@@ -4,8 +4,12 @@ import selectors
 import struct
 import sys
 
+from database import Database
 from invoices import Invoice
-from utilities import *
+from utilities import base64_to_bytes, bytes_to_hex
+
+DB_LOCATION = "client_db.sqlite3"
+db = Database(DB_LOCATION)
 
 
 class Message:
@@ -98,9 +102,14 @@ class Message:
     @staticmethod
     def process_invoice(invoice):
         result_json = json.loads(invoice[1])
-        invoice = Invoice(base64_to_bytes(result_json['r_hash'].rstrip()),
-                          result_json['payment_request'].rstrip(),
-                          result_json['add_index'].rstrip())
+        r_hash_hex = bytes_to_hex(base64_to_bytes(result_json['r_hash'].rstrip())).decode()
+        invoice = Invoice(
+                r_hash_hex,
+                result_json['payment_request'].rstrip(),
+                result_json['add_index'].rstrip(),
+                is_paid=False)
+        db.insert_row("invoices", invoice.r_hash_hex, invoice.payment_request,
+                      invoice.add_index, invoice.is_paid)
 
         print(invoice)
 
@@ -158,8 +167,8 @@ class Message:
 
     def queue_request(self):
         content = self.request["content"]
-        if content['action'] == 'invoice':
-            self.invoice_value = int(content['value'])
+        # if content['action'] == 'invoice':
+        #     self.invoice_value = int(content['value'])
         content_type = self.request["type"]
         content_encoding = self.request["encoding"]
         if content_type == "text/json":
