@@ -1,10 +1,6 @@
 import sqlite3
 
-sqlite_file = 'my_first_db.sqlite'    # name of the sqlite database file
-table_name1 = 'my_table_1'  # name of the table to be created
-table_name2 = 'my_table_2'  # name of the table to be created
-new_field = 'my_1st_column' # name of the column
-field_type = 'INTEGER'  # column data type
+from utilities import sha256_of_hex_to_hex
 
 
 # data types #
@@ -16,34 +12,38 @@ field_type = 'INTEGER'  # column data type
 ##############
 
 
-def connect(database):
-    conn = sqlite3.connect(database)
-    cursor = conn.cursor()
-    return conn, cursor
+class Database:
 
+    def __init__(self, sqlite_file):
+        self.db = sqlite_file
+        self.conn = sqlite3.connect(self.db)
+        self.cursor = self.conn.cursor()
+        # helper function to create sha256 hash of hex item. returns hex
+        self.conn.create_function("sha256_hex_hex", 1, sha256_of_hex_to_hex)
 
-def commit_and_close(conn):
-    conn.commit()
-    conn.close()
+    def reconnect(self):
+        try:
+            self.conn.close()
+        except sqlite3.Error:
+            pass
+        self.conn = sqlite3.connect(self.db)
+        self.cursor = self.conn.cursor()
 
+    def close_connection(self):
+        self.conn.close()
 
-def create_table(database, table_name, column_name, column_type):
-    """
-    Create table with a primary column
-    """
-    conn, cursor = connect(database)
-    cursor.execute(f'CREATE TABLE {table_name} ({column_name} {column_type} PRIMARY KEY)')
-    commit_and_close(conn)
+    def create_table(self, table_name, column_name, column_type):
+        """
+        Create table with a primary column
+        """
+        self.cursor.execute(f'CREATE TABLE {table_name} ({column_name} {column_type} PRIMARY KEY)')
+        self.conn.commit()
 
+    def add_column(self, table_name, column_name, column_type):
+        self.cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN '{column_name}' {column_type}")
+        self.conn.commit()
 
-def add_column(database, table_name, column_name, column_type):
-    conn, cursor = connect(database)
-    cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN '{column_name}' {column_type}")
-    commit_and_close(conn)
-
-
-def insert_row(database, table_name, *args):
-    conn, cursor = connect(database)
-    # if you add more columns, add more question marks after VALUES
-    cursor.execute(f"INSERT OR IGNORE INTO {table_name} VALUES (?, ?)", tuple(args))
-    commit_and_close(conn)
+    def insert_row(self, table_name, *args):
+        # if you add more columns, add more question marks after VALUES
+        self.conn.execute(f"INSERT OR IGNORE INTO {table_name} VALUES (?, ?, ?, ?)", tuple(args))
+        self.conn.commit()
