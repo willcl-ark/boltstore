@@ -37,7 +37,8 @@ class Database:
         Create table with a primary column
         """
         query = f"""
-        CREATE TABLE {table_name} ({column_name} {column_type} PRIMARY KEY)
+        CREATE TABLE
+            {table_name} ({column_name} {column_type} PRIMARY KEY)
         """
         self.cursor.execute(query)
         self.conn.commit()
@@ -45,8 +46,10 @@ class Database:
     def add_column(self, table_name, column_name, column_type):
 
         query = f"""
-        ALTER TABLE {table_name}
-        ADD COLUMN '{column_name}' {column_type}
+        ALTER TABLE
+            {table_name}
+        ADD COLUMN
+            '{column_name}' {column_type}
         """
 
         self.cursor.execute(query)
@@ -56,8 +59,10 @@ class Database:
         # if you add more columns, add more question marks after VALUES
 
         query = f"""
-        INSERT OR IGNORE INTO {table_name}
-        VALUES (?, ?, ?, ?)
+        INSERT OR IGNORE INTO
+            {table_name}
+        VALUES
+            (?, ?, ?, ?)
         """
 
         self.cursor.execute(query, tuple(args))
@@ -76,3 +81,21 @@ class Database:
 
         self.cursor.execute(query, (new_val, id))
         self.conn.commit()
+
+    def get_row(self, table_name, id_col, id):
+        """
+        returns a tuple of values
+        """
+
+        query = f"""
+        SELECT
+            *
+        FROM
+            {table_name}
+        WHERE
+            {id_col} = ?
+        """
+
+        self.cursor.execute(query, id)
+        return self.cursor.fetchone()
+
