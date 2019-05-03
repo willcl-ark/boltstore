@@ -2,10 +2,20 @@ import argparse
 import selectors
 import socket
 import traceback
+from os.path import isfile
 
 import libclient
+from database import Database
 
 sel = selectors.DefaultSelector()
+
+
+def create_db():
+    db = Database("client_db.sqlite3")
+    db.create_table("invoices", "r_hash_hex", "TEXT")
+    db.add_column("invoices", "payment_request", "TEXT")
+    db.add_column("invoices", "add_index", "INTEGER")
+    db.add_column("invoices", "is_paid", "INTEGER")
 
 
 def create_request(action, value):
@@ -75,6 +85,9 @@ if __name__ == '__main__':
                         type=str,
                         help='value of action to process')
     args = parser.parse_args()
+    # TODO: Fix this so it actually makes a new db!!!
+    if not isfile('client_db.sqlite3'):
+        create_db()
     if args.host and args.port and args.action and args.value:
         connect(args.host, args.port, args.action, args.value)
     else:
