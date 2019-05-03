@@ -23,9 +23,14 @@ def base64_to_bytes(base64_string):
     return a2b_base64(base64_string)
 
 
-def sha256_to_bytes(byte_string):
+def sha256_of_bytes_to_bytes(byte_string):
     return sha256(byte_string).digest()
 
 
-def sha256_to_hex(byte_string):
+def sha256_of_bytes_to_hex(byte_string):
     return sha256(byte_string).hexdigest()
+
+
+def sha256_of_hex_to_hex(hex_string):
+    byte_str = hex_to_bytes(hex_string)
+    return sha256_of_bytes_to_hex(byte_str)
